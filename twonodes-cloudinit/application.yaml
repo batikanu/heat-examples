@@ -11,7 +11,7 @@ parameters:
     description: Glance image to use for servers
   flavor:
     type: string
-    default: m1.tiny
+    default: m1.small
     description: Nova flavor to use for servers
   key_name:
     type: string
