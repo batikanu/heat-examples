@@ -1,4 +1,4 @@
-# Example invocation: heat stack-create --poll -f volume.yaml myvolume
+# Example invocation: heat stack-create --poll -f volumes.yaml myvolumes
 heat_template_version: 2015-10-15
 
 
@@ -23,7 +23,7 @@ resources:
           - "_"
           - - { get_param: 'OS::stack_name' }
             - appvolume
-      size: { get_param: size }
+      size: { get_param: app_size }
 
   db_volume:
     type: OS::Cinder::Volume
@@ -33,29 +33,7 @@ resources:
           - "_"
           - - { get_param: 'OS::stack_name' }
             - appvolume
-      size: { get_param: size }
-
-outputs:
-  app_volume_id:
-    value: { get_resource: appvolume }
-
-  db_volume_id:
-    value: { get_resource: dbvolume }
-
-
-resources:
-
-  app_volume:
-    type: OS::Cinder::Volume
-    properties:
-      name: myencryptedvolume
-      size: { get_param: size }
-
-  db_volume:
-    type: OS::Cinder::Volume
-    properties:
-      name: myencryptedvolume
-      size: { get_param: size }
+      size: { get_param: db_size }
 
 outputs:
   # Retrieval after stack creation (presuming stack is named `myvolumes`): 
