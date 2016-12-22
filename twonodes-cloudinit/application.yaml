@@ -17,7 +17,10 @@ parameters:
     type: string
     default: mykey
     description: SSH key to add to servers' /root/.ssh/authorized_keys
-  volume_id:
+  app_volume_id:
+    type: string
+    description: The Cinder volume to attach to the application server
+  db_volume_id:
     type: string
     description: The Cinder volume to attach to the database server
   db_user:
@@ -97,11 +100,16 @@ resources:
         str_replace:
           template: {get_file: user-data/write-config}
           params:
-            $VOLUME_DEV:
+            $APP_VOLUME_DEV:
               list_join:
                 - ""
                 - - "/dev/disk/by-id/virtio-"
-                  - { get_param: volume_id }
+                  - { get_param: app_volume_id }
+            $DB_VOLUME_DEV:
+              list_join:
+                - ""
+                - - "/dev/disk/by-id/virtio-"
+                  - { get_param: db_volume_id }
             $DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
             $DB_USER: { get_param: db_user }
             $DB_PASS: { get_attr: [ db_password, value ] }
@@ -156,6 +164,12 @@ resources:
       floating_network:
         get_param: floating_network
 
+  app_volume_attachment:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: { get_resource: appserver }
+      volume_id: { get_param: app_volume_id }
+
 
   dbserver:
     type: OS::Nova::Server
@@ -185,11 +199,11 @@ resources:
       floating_network:
         get_param: floating_network
 
-  myvolumeattachment:
+  db_volume_attachment:
     type: OS::Cinder::VolumeAttachment
     properties:
       instance_uuid: { get_resource: dbserver }
-      volume_id: { get_param: volume_id }
+      volume_id: { get_param: db_volume_id }
 
 
 
