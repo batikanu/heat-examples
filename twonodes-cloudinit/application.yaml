@@ -22,10 +22,12 @@ parameters:
     description: The Cinder volume to attach to the database server
   db_user:
     default: myapp
-    type: The user name to use for the application's database
+    type: string
+    description: The user name to use for the application's database
   app_name:
     default: myapplication
-    type: Your application's name
+    description: Your application's name
+    type: string
 
 
 resources:
@@ -89,21 +91,21 @@ resources:
   # Parameters that will be available to both user data scripts
   user_data_params:
     type: OS::Heat::SoftwareConfig
-      properties:
-        group: ungrouped
-        config:
-          str_replace:
-            template: {get_file: user-data/write-config}
-            params:
-              $VOLUME_DEV:
-                list_join:
-                  - ""
-                  - - "/dev/disk/by-id/virtio-"
-                    - { get_param: volume_id }
-              $DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
-              $DB_USER: { get_param: db_user }
-              $DB_PASS: { get_attr: [ db_password, value ] }
-              $APP_NAME: { get_param: app_name }
+    properties:
+      group: ungrouped
+      config:
+        str_replace:
+          template: {get_file: user-data/write-config}
+          params:
+            $VOLUME_DEV:
+              list_join:
+                - ""
+                - - "/dev/disk/by-id/virtio-"
+                  - { get_param: volume_id }
+            $DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
+            $DB_USER: { get_param: db_user }
+            $DB_PASS: { get_attr: [ db_password, value ] }
+            $APP_NAME: { get_param: app_name }
 
   # User data payload for appserver
   userdata_appserver:
