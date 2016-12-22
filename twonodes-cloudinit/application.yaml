@@ -88,21 +88,21 @@ resources:
 
   # Parameters that will be available to both user data scripts
   user_data_params:
-		type: OS::Heat::SoftwareConfig
-			properties:
-				group: ungrouped
-				config:
-					str_replace:
-						template: {get_file: user-data/write-config}
-						params:
-							$VOLUME_DEV:
+    type: OS::Heat::SoftwareConfig
+      properties:
+        group: ungrouped
+        config:
+          str_replace:
+            template: {get_file: user-data/write-config}
+            params:
+              $VOLUME_DEV:
                 list_join:
                   - ""
                   - - "/dev/disk/by-id/virtio-"
                     - { get_param: volume_id }
-							$DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
-							$DB_USER: { get_param: db_user }
-							$DB_PASS: { get_attr: [ db_password, value ] }
+              $DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
+              $DB_USER: { get_param: db_user }
+              $DB_PASS: { get_attr: [ db_password, value ] }
               $APP_NAME: { get_param: app_name }
 
   # User data payload for appserver
