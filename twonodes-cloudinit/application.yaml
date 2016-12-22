@@ -1,4 +1,19 @@
+# heat stack-create --poll -f application.yaml -P app_volume_id=$app_volume_id -P db_volume_id=$db_volume_id -P key_name=jgrassler -P flavor=d1.tiny myapplication
 heat_template_version: 2015-10-15
+
+description: |
+  # This is how you deploy the whole thing:
+  # 1) Instantiate volumes.yaml as follows
+  heat stack-create --poll -f volumes.yaml myvolumes
+
+  # 2) Retrieve outputs from myvolumes:
+  app_volume_id=$(heat output-show myvolumes app_volume_id | sed 's/"//g')
+  db_volume_id=$(heat output-show myvolumes db_volume_id | sed 's/"//g')
+
+  # 3) Create application stack:
+  heat stack-create --poll -f application.yaml -P app_volume_id=$app_volume_id -P db_volume_id=$db_volume_id -P key_name=<your nova keypair's name> myapplication
+
+
 
 parameters:
   floating_network:
