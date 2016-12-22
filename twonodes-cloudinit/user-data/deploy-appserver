@@ -1,0 +1,33 @@
+#!/bin/sh
+
+set -x
+set -e
+
+exec > /var/log/setup-machine.log 2>&1
+
+source /etc/heatconfig
+
+### Mock code below this point. Fill in actual to deploy your application. ###
+
+mkdir -p /opt/${APP_NAME}/data
+
+cat > /etc/mock-appconfig <<EOF
+[DEFAULT]
+data_dir = /opt/myapp/data
+
+[database]
+user = ${DB_USER}
+password = ${DB_PASS}
+host = ${DB_HOST}
+EOF
+
+cat > /etc/motd <<EOF
+This node has been set up as the mock database server for ${APP_NAME}.
+
+You will find 
+
+* A mockup application config file /etc/mock-appconfig
+* A mockup application directory in /opt/${APP_NAME}
+* This message in /etc/motd
+
+EOF

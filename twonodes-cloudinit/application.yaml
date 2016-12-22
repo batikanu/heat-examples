@@ -1,6 +1,5 @@
 heat_template_version: 2015-10-15
 
-
 parameters:
   floating_network:
     type: string
@@ -96,7 +95,11 @@ resources:
 					str_replace:
 						template: {get_file: user-data/write-config}
 						params:
-							$VOLUME_ID: { get_param: volume_id }
+							$VOLUME_DEV:
+                list_join:
+                  - ""
+                  - - "/dev/disk/by-id/virtio-"
+                    - { get_param: volume_id }
 							$DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
 							$DB_USER: { get_param: db_user }
 							$DB_PASS: { get_attr: [ db_password, value ] }
@@ -179,6 +182,13 @@ resources:
       port_id: { get_resource: port_dbserver }
       floating_network:
         get_param: floating_network
+
+  myvolumeattachment:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: { get_resource: dbserver }
+      volume_id: { get_param: volume_id }
+
 
 
 outputs:

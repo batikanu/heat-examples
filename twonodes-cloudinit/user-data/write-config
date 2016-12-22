@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# Writes the configuration parameters passed in by Heat/cloud-init to /etc/heatconfig.
+
+touch /etc/heatconfig
+chmod 400 /etc/heatconfig
+
+cat > /etc/heatconfig <<EOF
+export VOLUME_DEV=$VOLUME_DEV
+export DB_HOST=$DB_HOST
+export DB_USER=$DB_USER
+export DB_PASS=$DB_PASS
+export APP_NAME=$APP_NAME
+EOF

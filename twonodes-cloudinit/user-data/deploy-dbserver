@@ -1,0 +1,36 @@
+#!/bin/sh
+
+set -x
+set -e
+
+exec > /var/log/setup-machine.log 2>&1
+
+source /etc/heatconfig
+
+# Only format volume if it hasn't already been formatted.
+
+if ! test -e "$VOLUME_DEV" && file -s $VOLUME_DEV | grep -q "filesystem data" ; then
+    mkfs.ext4 "$VOLUME_DEV"
+fi
+
+mkdir -p /dbvolume
+mount -t ext4 $VOLUME_DEV /dbvolume
+
+### Mock code below this point. Fill in actual code for your application. ###
+
+echo "$date: Another record in the mock database for the $APP_NAME application." >> /dbvolume/mydb
+cat > /etc/mock-dbusers <<EOF
+root:verysecret
+${DB_USER}:${DB_PASS}
+EOF
+
+cat > /etc/motd <<EOF
+This node has been set up as the mock database server for ${APP_NAME}.
+
+You will find 
+
+* A mounted volume with a mock database in /dbvolume
+* A mockup database user configuration in /etc/mock-dbusers
+* This message in /etc/motd
+
+EOF
