@@ -7,14 +7,21 @@ exec > /var/log/setup-machine.log 2>&1
 
 source /etc/heatconfig
 
+
+# For some reason the volume id is shortened to 27 characters when the device
+# link in /dev/disk/by-id/ is created. Account for this by truncating the
+# device name accordingly.
+
+volume_dev=$(printf '%.43s\n' $APP_VOLUME_DEV)
+
 # Only format volume if it hasn't already been formatted.
 
-if ! test -e "$APP_VOLUME_DEV" && file -s $APP_VOLUME_DEV | grep -q "filesystem data" ; then
-    mkfs.ext4 "$APP_VOLUME_DEV"
+if ! file -Ls $volume_dev | grep -q "filesystem data" ; then
+    mkfs.ext4 "$volume_dev"
 fi
 
 mkdir -p /appvolume
-mount -t ext4 $APP_VOLUME_DEV /appvolume
+mount -t ext4 $volume_dev /appvolume
 
 ### Mock code below this point. Fill in actual to deploy your application. ###
 
