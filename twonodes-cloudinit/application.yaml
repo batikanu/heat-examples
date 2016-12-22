@@ -1,0 +1,199 @@
+heat_template_version: 2015-10-15
+
+
+parameters:
+  floating_network:
+    type: string
+    default: floating
+    description: Network to draw Floating IPs from
+  image:
+    type: string
+    default: openSUSE-Leap-42.1
+    description: Glance image to use for servers
+  flavor:
+    type: string
+    default: m1.tiny
+    description: Nova flavor to use for servers
+  key_name:
+    type: string
+    default: mykey
+    description: SSH key to add to servers' /root/.ssh/authorized_keys
+  volume_id:
+    type: string
+    description: The Cinder volume to attach to the database server
+  db_user:
+    default: myapp
+    type: The user name to use for the application's database
+  app_name:
+    default: myapplication
+    type: Your application's name
+
+
+resources:
+
+  ### Network infrastructure ###
+
+  mynetwork:
+    type: OS::Neutron::Net
+    properties:
+      name: mynet
+
+
+  mysubnet:
+    type: OS::Neutron::Subnet
+    properties:
+      cidr: 10.0.0.1/24
+      name: mysubnet
+      network:
+        get_resource: mynetwork
+
+  router:
+    type: OS::Neutron::Router
+    properties:
+      external_gateway_info:
+        network:
+          get_param: floating_network
+
+
+  router_interface:
+    type: OS::Neutron::RouterInterface
+    properties:
+      router: { get_resource: router }
+      subnet: { get_resource: mysubnet }
+
+  allow_inbound:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: "Allow inbound SSH and HTTP traffic"
+      name: allow SSH and ICMP from anywhere
+      rules:
+        - direction: ingress
+          remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+        - direction: ingress
+          remote_ip_prefix: 0.0.0.0/0
+          protocol: tcp
+          port_range_min: 80
+          port_range_max: 80
+        - remote_ip_prefix: 0.0.0.0/0
+          protocol: icmp
+
+
+
+  ### User data components ###
+
+  db_password:
+    type: OS::Heat::RandomString
+
+  # Parameters that will be available to both user data scripts
+  user_data_params:
+		type: OS::Heat::SoftwareConfig
+			properties:
+				group: ungrouped
+				config:
+					str_replace:
+						template: {get_file: user-data/write-config}
+						params:
+							$VOLUME_ID: { get_param: volume_id }
+							$DB_HOST: { get_attr: [ ip_dbserver, floating_ip_address ] }
+							$DB_USER: { get_param: db_user }
+							$DB_PASS: { get_attr: [ db_password, value ] }
+              $APP_NAME: { get_param: app_name }
+
+  # User data payload for appserver
+  userdata_appserver:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: {get_resource: user_data_params}
+        - config: {get_file: user-data/deploy-appserver}
+
+  # User data payload for dbserver
+  userdata_dbserver:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: {get_resource: user_data_params}
+        - config: {get_file: user-data/deploy-dbserver}
+
+
+
+
+  ### Servers ###
+
+  appserver:
+    type: OS::Nova::Server
+    properties:
+      name: appserver
+      config_drive: true
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: port_appserver }
+      user_data_format: RAW
+      user_data: { get_resource: userdata_appserver }
+
+  port_appserver:
+    type: OS::Neutron::Port
+    properties:
+      network:
+        get_resource: mynetwork
+      security_groups:
+        - get_resource: allow_inbound
+
+  ip_appserver:
+    type: OS::Neutron::FloatingIP
+    properties:
+      port_id: { get_resource: port_appserver }
+      floating_network:
+        get_param: floating_network
+
+
+  dbserver:
+    type: OS::Nova::Server
+    properties:
+      name: dbserver
+      config_drive: true
+      flavor: { get_param: flavor }
+      image: { get_param: image }
+      key_name: { get_param: key_name }
+      networks:
+        - port: { get_resource: port_dbserver }
+      user_data_format: RAW
+      user_data: { get_resource: userdata_dbserver }
+
+  port_dbserver:
+    type: OS::Neutron::Port
+    properties:
+      network:
+        get_resource: mynetwork
+      security_groups:
+        - get_resource: allow_inbound
+
+  ip_dbserver:
+    type: OS::Neutron::FloatingIP
+    properties:
+      port_id: { get_resource: port_dbserver }
+      floating_network:
+        get_param: floating_network
+
+
+outputs:
+  # Retrieval after stack creation (presuming stack is named `mystack`): 
+  # heat output-show mystack ip_appserver
+  ip_appserver:
+    value:
+      get_attr:
+        - ip_appserver
+        - floating_ip_address
+
+  # Retrieval after stack creation (presuming stack is named `mystack`): 
+  # heat output-show mystack ip_dbserver
+  ip_dbserver:
+    value:
+      get_attr:
+        - ip_dbserver
+        - floating_ip_address
