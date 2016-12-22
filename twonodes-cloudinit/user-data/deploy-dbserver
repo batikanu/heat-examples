@@ -9,12 +9,12 @@ source /etc/heatconfig
 
 # Only format volume if it hasn't already been formatted.
 
-if ! test -e "$VOLUME_DEV" && file -s $VOLUME_DEV | grep -q "filesystem data" ; then
-    mkfs.ext4 "$VOLUME_DEV"
+if ! test -e "$DB_VOLUME_DEV" && file -s $DB_VOLUME_DEV | grep -q "filesystem data" ; then
+    mkfs.ext4 "$DB_VOLUME_DEV"
 fi
 
 mkdir -p /dbvolume
-mount -t ext4 $VOLUME_DEV /dbvolume
+mount -t ext4 $DB_VOLUME_DEV /dbvolume
 
 ### Mock code below this point. Fill in actual code for your application. ###
 

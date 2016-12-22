@@ -7,27 +7,43 @@ exec > /var/log/setup-machine.log 2>&1
 
 source /etc/heatconfig
 
+# Only format volume if it hasn't already been formatted.
+
+if ! test -e "$APP_VOLUME_DEV" && file -s $APP_VOLUME_DEV | grep -q "filesystem data" ; then
+    mkfs.ext4 "$APP_VOLUME_DEV"
+fi
+
+mkdir -p /appvolume
+mount -t ext4 $APP_VOLUME_DEV /appvolume
+
 ### Mock code below this point. Fill in actual to deploy your application. ###
 
-mkdir -p /opt/${APP_NAME}/data
+mkdir -p /appvolume/${APP_NAME}/data
 
-cat > /etc/mock-appconfig <<EOF
+if [ ! -x /appvolume/mock-appconfig ]; then
+    cat > /appvolume/mock-appconfig <<EOF
 [DEFAULT]
-data_dir = /opt/myapp/data
+data_dir = /appvolume/${APP_NAME}/data
 
 [database]
 user = ${DB_USER}
 password = ${DB_PASS}
 host = ${DB_HOST}
 EOF
+fi
+
+echo "# updated at $(date)" >> /appvolume/mock-appconfig
 
 cat > /etc/motd <<EOF
 This node has been set up as the mock database server for ${APP_NAME}.
 
 You will find 
 
-* A mockup application config file /etc/mock-appconfig
-* A mockup application directory in /opt/${APP_NAME}
+* A mockup application config file in /appvolume/mock-appconfig with a
+  timestamp appended to include redeployment every time the application.yaml
+  template is re-instantiated.
+* A persistent application data volume mounted at /appvolume
+* A mockup data directory in /appvolume/${APP_NAME}/data
 * This message in /etc/motd
 
 EOF
