@@ -23,7 +23,57 @@ fi
 mkdir -p /appvolume
 mount -t ext4 $volume_dev /appvolume
 
-### Mock code below this point. Fill in actual to deploy your application. ###
+cat > /opt/start-oscm.sh <<EOF
+#/bin/sh
+
+# check if docker is running
+if ! docker ps &>/dev/null; then
+  echo "starting docker service"
+  systemctl start docker.service
+fi
+
+# ensure that postgres starts before glassfish
+if ! docker inspect servicecatalog/oscm-db &>/dev/null; then
+    docker pull servicecatalog/oscm-db >/dev/null
+fi
+
+docker rm -f oscm-postgres &>/dev/null
+docker run -i --name oscm-db servicecatalog/oscm-db &
+sleep 5
+docker rm -f oscm-app &>/dev/null
+docker run -i -p 8080:8080 --link oscm-db:postgres --name oscm-app servicecatalog/oscm-app
+EOF
+
+chmod +x /opt/start-oscm.sh
+
+cat > /opt/stop-oscm.sh <<EOF
+#/bin/sh
+
+echo "oscm is being stopped"
+docker rm -f oscm-db &>/dev/null &&
+docker rm -f oscm-app &>/dev/null
+EOF
+
+chmod +x /opt/stop-oscm.sh
+
+cat > /etc/systemd/system/oscm.service <<EOF
+[Unit]
+Description=OSCM conainerized
+Requires=docker.service
+After=docker.service
+
+[Service]
+ExecStart=/usr/bin/sh /opt/start-oscm.sh
+ExecStop=/usr/bin/sh /opt/stop-oscm.sh
+
+[Install]
+WantedBy=default.target
+EOF
+
+systemctl enable docker.service
+systemctl enable oscm.service
+systemctl start oscm.service
+
 
 mkdir -p /appvolume/${APP_NAME}/data
 
@@ -44,7 +94,7 @@ echo "# updated at $(date)" >> /appvolume/mock-appconfig
 cat > /etc/motd <<EOF
 This node has been set up as the mock database server for ${APP_NAME}.
 
-You will find 
+You will find
 
 * A mockup application config file in /appvolume/mock-appconfig with a
   timestamp appended to include redeployment every time the application.yaml
@@ -54,3 +104,6 @@ You will find
 * This message in /etc/motd
 
 EOF
+
+docker run --rm -i --net=host --name oscm-postgres servicecatalog/postgres
+docker run --rm -i --net=host --name oscm-glassfish servicecatalog/glassfish
